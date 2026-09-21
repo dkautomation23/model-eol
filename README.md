@@ -17,11 +17,12 @@ API key, no account, no network call — the table ships with the tool.
 
 ## Why this exists
 
-On **23 October 2026** OpenAI retires eighteen model identifiers in one day,
-including `gpt-4-0613`, `gpt-4-turbo`, `o1`, `o3-mini`, `o4-mini` and every
-`ft-*` fine-tune built on them. Five days earlier, on **28 September**,
-`gpt-3.5-turbo-instruct`, `babbage-002`, `davinci-002` and `gpt-3.5-turbo-1106`
-go. On **11 December** the `gpt-5` and `o3` snapshots follow.
+On **23 October 2026** OpenAI retires twenty-nine model identifiers in one day,
+including `gpt-4-0613`, `gpt-4-turbo`, `o1`, `o3-mini` and `o4-mini`. Four more
+went on **28 September**, twenty-five days earlier: `gpt-3.5-turbo-instruct`,
+`babbage-002`, `davinci-002` and `gpt-3.5-turbo-1106`. On **11 December** the
+`gpt-5` and `o3` snapshots follow. Counts come from the table itself —
+`py -m model_eol.cli --list` prints every one with its date.
 
 The scale is not a guess. GitHub code search, 21 September 2026:
 
