@@ -36,10 +36,17 @@ TIMEOUT = 20
 
 # Identifiers each provider actually uses, kept deliberately loose: this is a
 # presence check, not a parser. Anything caught here is shown to a person.
+#
+# The lookbehind rather than \b: a hyphen counts as a word boundary, so
+# `\bbabbage-code-001` matches happily inside `code-search-babbage-code-001`
+# and reports a fragment of another model's name as an unknown one.
+_EDGE = r"(?<![A-Za-z0-9._-])"
 IDENTIFIER = {
-    "OpenAI": re.compile(r"\b(?:ft-)?(?:gpt|o[1-4]|davinci|babbage|text-embedding)[A-Za-z0-9.\-]*"),
-    "Anthropic": re.compile(r"\bclaude-[A-Za-z0-9.\-]+"),
-    "Google": re.compile(r"\bgemini-[A-Za-z0-9.\-]+"),
+    "OpenAI": re.compile(
+        _EDGE + r"(?:ft-)?(?:gpt|o[1-4]|davinci|babbage|whisper|chatgpt|computer-use"
+                r"|text-embedding)[A-Za-z0-9.\-]*"),
+    "Anthropic": re.compile(_EDGE + r"claude-[A-Za-z0-9.\-]+"),
+    "Google": re.compile(_EDGE + r"gemini-[A-Za-z0-9.\-]+"),
 }
 
 

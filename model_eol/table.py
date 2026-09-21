@@ -240,6 +240,40 @@ RETIREMENTS += (
     Retirement("sora-2-pro", date(2026, 9, 24), "---"),
     Retirement("sora-2-pro-2025-10-06", date(2026, 9, 24), "---"),
 )
+RETIREMENTS += (
+    # A second pass of the same --check-source, after the extractor learned to
+    # read a non-breaking hyphen in a date, a month spelled in full, and a cell
+    # naming two more identifiers in a parenthesis. The 23 July 2026 batch -
+    # deep-research, codex, computer-use - has already gone.
+    Retirement("computer-use-preview", date(2026, 7, 23), "gpt-5.6-terra"),
+    Retirement("computer-use-preview-2025-03-11", date(2026, 7, 23), "gpt-5.6-terra"),
+    Retirement("gpt-4o-mini-search-preview-2025-03-11", date(2026, 7, 23), "gpt-5.6-terra"),
+    Retirement("gpt-4o-search-preview-2025-03-11", date(2026, 7, 23), "gpt-5.6-terra"),
+    Retirement("gpt-5-chat-latest", date(2026, 7, 23), "gpt-5.6-sol"),
+    Retirement("gpt-5-codex", date(2026, 7, 23), "gpt-5.6-sol"),
+    Retirement("gpt-5.1-chat-latest", date(2026, 7, 23), "gpt-5.6-sol"),
+    Retirement("gpt-5.1-codex", date(2026, 7, 23), "gpt-5.6-sol"),
+    Retirement("gpt-5.1-codex-max", date(2026, 7, 23), "gpt-5.6-sol"),
+    Retirement("gpt-5.1-codex-mini", date(2026, 7, 23), "gpt-5.6-terra"),
+    Retirement("gpt-5.2-codex", date(2026, 7, 23), "gpt-5.6-sol"),
+    Retirement("gpt-audio-mini-2025-10-06", date(2026, 7, 23), "gpt-audio-1.5"),
+    Retirement("gpt-realtime-mini-2025-10-06", date(2026, 7, 23), "gpt-realtime-2.1-mini"),
+    Retirement("o3-deep-research", date(2026, 7, 23), "gpt-5.6-sol"),
+    Retirement("o3-deep-research-2025-06-26", date(2026, 7, 23), "gpt-5.6-sol"),
+    Retirement("o4-mini-deep-research", date(2026, 7, 23), "gpt-5.6-sol"),
+    Retirement("o4-mini-deep-research-2025-06-26", date(2026, 7, 23), "gpt-5.6-sol"),
+)
+RETIREMENTS += (
+    # The last three the parser could not reach. Their row writes the date with
+    # U+2010 HYPHEN rather than an ASCII one, and names two more identifiers in
+    # a parenthesis inside the model cell: "gpt-4-0125-preview (including
+    # gpt-4-turbo-preview and gpt-4-turbo-preview-completions, which point to
+    # this snapshot)". Copied by hand, like the rest of the table was.
+    Retirement("gpt-4-0125-preview", date(2026, 3, 26), "gpt-5 or gpt-4.1"),
+    Retirement("gpt-4-turbo-preview", date(2026, 3, 26), "gpt-5 or gpt-4.1"),
+    Retirement("gpt-4-turbo-preview-completions", date(2026, 3, 26), "gpt-5 or gpt-4.1"),
+)
+
 BY_MODEL = {r.model: r for r in RETIREMENTS}
 
 # Live identifiers that a naive search mistakes for a retired one, because a
@@ -262,5 +296,4 @@ LIVE_LOOKALIKES = (
     "gpt-5.6-terra",
     "gpt-5.6-luna",
     "gpt-5.6-cyber",
-    "o3-deep-research",
 )

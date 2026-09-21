@@ -112,7 +112,7 @@ model-eol - tables copied 2026-09-21
     [OpenAI] gpt-4-turbo  ->  gpt-5.6-sol   1 occurrence(s)
 ```
 
-169 identifiers in all: 122 from OpenAI, 28 from Google, 19 from Anthropic, each
+189 identifiers in all: 142 from OpenAI, 28 from Google, 19 from Anthropic, each
 carrying the provider that published it and the date that provider gave.
 
 ## Usage
@@ -142,9 +142,13 @@ $ py -m model_eol.cli --check-source
 model-eol - comparing the table copied 2026-09-21 against the live pages
 
 OpenAI  https://developers.openai.com/api/docs/deprecations
-  24 identifier(s) on the page that this table does not have - these are the ones that matter
+  1 identifier(s) on the page that this table does not have - these are the ones that matter:
+      gpt-5.3-codex
+
+Anthropic  https://docs.anthropic.com/en/docs/about-claude/model-deprecations
+  11 identifier(s) on the page that this table does not have
 ...
-50 identifier(s) need a person to look. This cannot tell a new retirement from a
+27 identifier(s) need a person to look. This cannot tell a new retirement from a
 model merely mentioned in a sentence.
 ```
 
@@ -152,16 +156,24 @@ Exit 0 when the pages match, 1 when something needs a person, 2 when a page
 could not be read — a check that could not run must not read as a pass.
 
 **It earned its place the first time it ran.** The table had been copied by hand
-and covered 40 OpenAI identifiers. The check found 82 more the page dates,
-including whole families the hand-copy had missed — audio, realtime, transcribe
-— and every model already switched off, which is the most useful thing this can
-report: `gpt-3.5-turbo-0301`, `o1-preview` and `gpt-4-0314` are dead now, and a
-codebase naming one is failing today rather than in October.
+and covered 40 OpenAI identifiers. The check found **102 more** the page dates,
+including whole families the hand-copy had missed — audio, realtime, transcribe,
+deep-research, codex — and every model already switched off, which is the most
+useful thing this can report: `gpt-3.5-turbo-0301`, `o1-preview`, `gpt-4-0314`
+and the whole 23 July 2026 batch are dead now, and a codebase naming one is
+failing today rather than in October.
 
-It also found an error in this repository's own test suite. `o1-mini` was listed
-as a live look-alike, with a test asserting it must never be reported. The page
-says it was switched off on **27 October 2025**. The assumption was mine; the
-check is what caught it, and the test now asserts the date instead.
+Getting there took three passes, and each one was a character rather than an
+idea: one section writes its dates with U+2010 HYPHEN instead of an ASCII one,
+another spells the month in full, and one cell names three identifiers inside a
+parenthesis. The twenty-seven that remain are models the pages name without
+dating — Anthropic's active list, Google's "No shutdown date announced" — and
+the command says a person must look rather than pretending to a verdict.
+
+It also found two errors in this repository's own list of live look-alikes —
+identifiers a test asserted must never be reported. `o1-mini` was switched off on
+**27 October 2025** and `o3-deep-research` on **23 July 2026**. Both assumptions
+were mine; the check is what caught them, and the tests now assert the dates.
 
 Every date the hand-copied table already had matched the page exactly, which is
 the other half of what this command is for.
