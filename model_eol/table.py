@@ -68,14 +68,8 @@ RETIREMENTS: tuple[Retirement, ...] = (
                "replacement needs reasoning.mode: pro"),
     Retirement("o3-mini-2025-01-31", date(2026, 10, 23), "gpt-5.6-sol"),
     Retirement("o3-mini", date(2026, 10, 23), "gpt-5.6-sol"),
-    Retirement("ft-o4-mini-2025-04-16", date(2026, 10, 23), "gpt-5.6-terra"),
     Retirement("o4-mini-2025-04-16", date(2026, 10, 23), "gpt-5.6-terra"),
     Retirement("o4-mini", date(2026, 10, 23), "gpt-5.6-terra"),
-    Retirement("ft-gpt-3.5-turbo", date(2026, 10, 23), "gpt-5.6-terra"),
-    Retirement("ft-gpt-4", date(2026, 10, 23), "gpt-5.6-sol"),
-    Retirement("ft-gpt-4.1-nano-2025-04-14", date(2026, 10, 23), "gpt-5.6-luna"),
-    Retirement("ft-babbage-002", date(2026, 10, 23), "gpt-5.6-terra"),
-    Retirement("ft-davinci-002", date(2026, 10, 23), "gpt-5.6-terra"),
     # 2026-12-11
     Retirement("gpt-5-2025-08-07", date(2026, 12, 11), "gpt-5.6-sol"),
     Retirement("gpt-5-mini-2025-08-07", date(2026, 12, 11), "gpt-5.6-terra"),
@@ -234,11 +228,11 @@ RETIREMENTS += (
     Retirement("gpt-4o-realtime-preview-2025-06-03", date(2026, 5, 7), "gpt-realtime-1.5"),
     Retirement("dall-e-2", date(2026, 5, 12), "gpt-image-2 , gpt-image-1 , or gpt-image-1-mini"),
     Retirement("dall-e-3", date(2026, 5, 12), "gpt-image-2 , gpt-image-1 , or gpt-image-1-mini"),
-    Retirement("sora-2", date(2026, 9, 24), "---"),
-    Retirement("sora-2-2025-10-06", date(2026, 9, 24), "---"),
-    Retirement("sora-2-2025-12-08", date(2026, 9, 24), "---"),
-    Retirement("sora-2-pro", date(2026, 9, 24), "---"),
-    Retirement("sora-2-pro-2025-10-06", date(2026, 9, 24), "---"),
+    Retirement("sora-2", date(2026, 9, 24), ""),
+    Retirement("sora-2-2025-10-06", date(2026, 9, 24), ""),
+    Retirement("sora-2-2025-12-08", date(2026, 9, 24), ""),
+    Retirement("sora-2-pro", date(2026, 9, 24), ""),
+    Retirement("sora-2-pro-2025-10-06", date(2026, 9, 24), ""),
 )
 RETIREMENTS += (
     # A second pass of the same --check-source, after the extractor learned to

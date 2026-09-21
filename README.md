@@ -113,7 +113,7 @@ model-eol - tables copied 2026-09-21
     [OpenAI] gpt-4-turbo  ->  gpt-5.6-sol   1 occurrence(s)
 ```
 
-189 identifiers in all: 142 from OpenAI, 28 from Google, 19 from Anthropic, each
+183 identifiers in all: 136 from OpenAI, 28 from Google, 19 from Anthropic, each
 carrying the provider that published it and the date that provider gave.
 
 ## Usage

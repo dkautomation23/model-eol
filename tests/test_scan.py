@@ -59,9 +59,25 @@ class TestMatching(unittest.TestCase):
 
 
 class TestTable(unittest.TestCase):
-    def test_every_entry_has_a_replacement(self):
+    def test_a_replacement_is_either_named_or_honestly_absent(self):
+        """Five Sora rows carry no replacement because the page gives none. They
+        used to hold the literal string "---", which the report printed to the
+        user as `-> ---`. An empty value is the honest shape; the CLI turns it
+        into words."""
+        blank = [r.model for r in RETIREMENTS if not r.replacement]
+        self.assertEqual(sorted(blank), sorted(m for m in blank if m.startswith("sora-")),
+                         "only the rows whose source published no replacement may be blank")
         for r in RETIREMENTS:
-            self.assertTrue(r.replacement, f"{r.model} has no replacement")
+            self.assertNotIn("---", r.replacement, f"{r.model} carries a placeholder")
+
+    def test_no_row_pretends_to_be_a_fine_tune_identifier(self):
+        """`ft-gpt-4` is not an identifier any codebase contains. OpenAI writes a
+        fine-tune as `ft:gpt-4:org:suffix:id`, and the base model inside it is
+        matched by the ordinary rule - six `ft-*` rows inflated the count and
+        matched nothing."""
+        self.assertEqual([r.model for r in RETIREMENTS if r.model.startswith("ft-")], [])
+        hits = find_in_text('model = "ft:gpt-4:acme:suffix:abc123"')
+        self.assertEqual([h.model for h in hits], ["gpt-4"])
 
     def test_no_duplicate_identifiers(self):
         models = [r.model for r in RETIREMENTS]
@@ -135,7 +151,8 @@ class TestExitCodes(unittest.TestCase):
         self.assertEqual(only_docs, 1, "the doc still matches, which is why the flag exists")
         nothing = main([str(self.dir), "--today", "2026-09-21", "--within", "30",
                         "--exclude", "call.py", "--exclude", "docs/*"])
-        self.assertEqual(nothing, 0)
+        self.assertEqual(nothing, 2,
+                         "excluding everything means nothing was checked, which is not a pass")
 
     def test_check_source_does_not_pass_while_printing_a_problem(self):
         """It used to. A page that had dropped a row we hold printed the warning

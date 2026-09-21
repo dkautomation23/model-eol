@@ -48,7 +48,15 @@ class Hit:
     path: str
     line: int
     model: str
-    text: str
+    column: int
+    text: str = ""
+    """Empty unless --show-lines is passed.
+
+    The whole source line used to go into the report and into the JSON. A
+    compact config with the model id and the API key on one line would then be
+    copied straight into a CI log by a tool whose job is to prevent trouble.
+    The file, the line and the column say where to look without quoting it.
+    """
 
     @property
     def shutdown(self) -> date:
@@ -74,15 +82,16 @@ class Hit:
         return entry.shutdown if entry else None
 
 
-def find_in_text(text: str, path: str = "<text>") -> list[Hit]:
+def find_in_text(text: str, path: str = "<text>", show_lines: bool = False) -> list[Hit]:
     hits: list[Hit] = []
     for number, line in enumerate(text.splitlines(), start=1):
         for m in BOUNDED.finditer(line):
-            hits.append(Hit(path, number, m.group(0), line.strip()[:160]))
+            hits.append(Hit(path, number, m.group(0), m.start() + 1,
+                            line.strip()[:160] if show_lines else ""))
     return hits
 
 
-def candidate_files(root: Path, exclude: tuple[str, ...] = ()) -> list[Path]:
+def all_files(root: Path, exclude: tuple[str, ...] = ()) -> list[Path]:
     """Files worth reading. `exclude` takes globs relative to root.
 
     A repository that documents model identifiers - a changelog, a table, this
@@ -101,27 +110,56 @@ def candidate_files(root: Path, exclude: tuple[str, ...] = ()) -> list[Path]:
             # full_match only exists from 3.13, while CI runs 3.11 too.
             if any(fnmatch(rel, pattern) for pattern in exclude):
                 continue
-        if path.suffix.lower() not in TEXT_SUFFIX:
-            continue
-        try:
-            if path.stat().st_size > MAX_BYTES:
-                continue
-        except OSError:
-            continue
         out.append(path)
     return sorted(out)
 
 
-def scan(root: Path, exclude: tuple[str, ...] = ()) -> list[Hit]:
+@dataclass(frozen=True)
+class Result:
+    """What was found, and what could not be looked at.
+
+    The second half is the point. An earlier version returned only the hits, so
+    a repository of .vue files, or one whose files were all unreadable, got
+    "No retired identifiers found" - which reads as "you are fine" and was
+    really "I did not look". Silence has to be distinguishable from a clean
+    answer, so the counts come back with the hits and the CLI refuses to call
+    an empty look a pass.
+    """
+
+    hits: list
+    read: int
+    skipped_suffix: int
+    skipped_size: int
+    unreadable: int
+
+    @property
+    def looked_at_nothing(self) -> bool:
+        return self.read == 0
+
+
+def scan(root: Path, exclude: tuple[str, ...] = (), show_lines: bool = False) -> Result:
     hits: list[Hit] = []
-    for path in candidate_files(root, exclude):
+    read = skipped_suffix = skipped_size = unreadable = 0
+    for path in all_files(root, exclude):
+        if path.suffix.lower() not in TEXT_SUFFIX:
+            skipped_suffix += 1
+            continue
+        try:
+            if path.stat().st_size > MAX_BYTES:
+                skipped_size += 1
+                continue
+        except OSError:
+            unreadable += 1
+            continue
         try:
             text = path.read_text(encoding="utf-8", errors="strict")
         except (UnicodeDecodeError, OSError):
+            unreadable += 1
             continue
+        read += 1
         rel = path.relative_to(root) if root.is_dir() else path
-        hits.extend(find_in_text(text, str(rel)))
-    return hits
+        hits.extend(find_in_text(text, str(rel), show_lines))
+    return Result(hits, read, skipped_suffix, skipped_size, unreadable)
 
 
 def group_by_date(hits: list[Hit]) -> dict[date, list[Hit]]:

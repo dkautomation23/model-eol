@@ -51,10 +51,12 @@ def _print_report(hits, today: date, within: int) -> int:
             first = occurrences[0]
             chained = (f"  (which itself retires {first.replacement_dies.isoformat()})"
                        if first.replacement_dies else "")
-            print(f"    [{first.provider}] {model}  ->  {first.replacement}{chained}"
+            target = first.replacement or "no replacement published"
+            print(f"    [{first.provider}] {model}  ->  {target}{chained}"
                   f"   {len(occurrences)} occurrence(s)")
             for hit in occurrences[:3]:
-                print(f"        {hit.path}:{hit.line}  {hit.text}")
+                where = f"{hit.path}:{hit.line}:{hit.column}"
+                print(f"        {where}  {hit.text}" if hit.text else f"        {where}")
             if len(occurrences) > 3:
                 print(f"        ... and {len(occurrences) - 3} more")
         if days <= within:
@@ -139,6 +141,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="ask each provider's page whether this table is still what it "
                              "publishes. The only command here that uses the network")
     parser.add_argument("--today", help="pretend today is this ISO date, for tests")
+    parser.add_argument("--show-lines", action="store_true",
+                        help="quote the source line in the report. Off by default: a "
+                             "config with the model id and an API key on one line would "
+                             "otherwise be copied into a CI log")
     parser.add_argument("--exclude", action="append", default=[], metavar="GLOB",
                         help="skip paths matching this glob; repeatable. Use it for "
                              "documentation that lists model ids rather than calls them")
@@ -165,7 +171,19 @@ def main(argv: list[str] | None = None) -> int:
         print(f"nothing to scan at {root}", file=sys.stderr)
         return 2
 
-    hits = scan(root, tuple(args.exclude))
+    result = scan(root, tuple(args.exclude), show_lines=args.show_lines)
+    hits = result.hits
+
+    # Reading nothing is not a clean result, it is "I could not look". An
+    # earlier version returned 0 here, so a repository of .vue files got
+    # "No retired identifiers found" and read as a pass.
+    if result.looked_at_nothing:
+        print(f"{root}: read no files at all "
+              f"({result.skipped_suffix} of an unknown type, "
+              f"{result.skipped_size} too large, {result.unreadable} unreadable).",
+              file=sys.stderr)
+        print("This is not a clean result - nothing was looked at.", file=sys.stderr)
+        return 2
 
     if args.json:
         args.json.parent.mkdir(parents=True, exist_ok=True)
@@ -173,10 +191,14 @@ def main(argv: list[str] | None = None) -> int:
             "sources": SOURCES,
             "table_snapshot": SNAPSHOT.isoformat(),
             "scanned": str(root),
+            "files_read": result.read,
+            "files_skipped_by_type": result.skipped_suffix,
+            "files_skipped_by_size": result.skipped_size,
+            "files_unreadable": result.unreadable,
             "today": today.isoformat(),
             "within_days": args.within,
             "findings": [{
-                "path": h.path, "line": h.line, "model": h.model,
+                "path": h.path, "line": h.line, "column": h.column, "model": h.model,
                 "provider": h.provider,
                 "shutdown": h.shutdown.isoformat(), "replacement": h.replacement,
                 "replacement_dies": (h.replacement_dies.isoformat()
@@ -185,7 +207,12 @@ def main(argv: list[str] | None = None) -> int:
             } for h in hits],
         }, indent=2), encoding="utf-8")
 
-    return _print_report(hits, today, args.within)
+    footer = (f"Read {result.read} file(s); skipped {result.skipped_suffix} by type, "
+              f"{result.skipped_size} by size, {result.unreadable} unreadable.")
+    code = _print_report(hits, today, args.within)
+    print()
+    print(footer)
+    return code
 
 
 if __name__ == "__main__":

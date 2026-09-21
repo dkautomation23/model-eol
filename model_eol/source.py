@@ -40,7 +40,12 @@ TIMEOUT = 20
 # The lookbehind rather than \b: a hyphen counts as a word boundary, so
 # `\bbabbage-code-001` matches happily inside `code-search-babbage-code-001`
 # and reports a fragment of another model's name as an unknown one.
-_EDGE = r"(?<![A-Za-z0-9._-])"
+ID_CHAR = "A-Za-z0-9._-"
+_EDGE = rf"(?<![{ID_CHAR}])"
+
+# Bare family names, which appear in prose on every one of these pages.
+FAMILY_WORDS = {"gpt", "o1", "o3", "o4", "claude", "gemini", "davinci", "babbage",
+                "whisper", "chatgpt", "text-embedding"}
 IDENTIFIER = {
     "OpenAI": re.compile(
         _EDGE + r"(?:ft-)?(?:gpt|o[1-4]|davinci|babbage|whisper|chatgpt|computer-use"
@@ -78,11 +83,15 @@ def compare(provider: str, url: str, html: str) -> Comparison:
     on_page = set(IDENTIFIER[provider].findall(text))
     ours = {model for model, entry in BY_MODEL.items() if entry.provider == provider}
 
-    # Presence is checked by looking for the name itself, not by asking whether
-    # the identifier regex produced it. The regex is a net for names we have
-    # never seen; using it here reported `ada`, `whisper-1` and forty-two
-    # others as gone from a page that plainly lists them.
-    missing = sorted(model for model in ours if model not in text)
+    # Presence is checked on a token edge, not as a substring. A page that
+    # mentions only `gpt-4o` used to convince this that `gpt-4` was present as
+    # well, because one name contains the other - the same prefix problem the
+    # scanner solves, arriving from the other side.
+    def present(name: str) -> bool:
+        pattern = re.compile(rf"(?<![{ID_CHAR}]){re.escape(name)}(?![{ID_CHAR}])")
+        return pattern.search(text) is not None
+
+    missing = sorted(model for model in ours if not present(model))
     # A model this table names as a replacement is a live one by definition:
     # reporting it as "unknown" every run is noise, and noise is how a check
     # gets ignored. Same for anything too short to be a real identifier - a
@@ -90,12 +99,17 @@ def compare(provider: str, url: str, html: str) -> Comparison:
     replacements = {word
                     for entry in BY_MODEL.values()
                     for word in entry.replacement.replace(" or ", " ").split()}
+    # No length filter. `len(name) > 12` was quietly dropping every short new
+    # name: a `gpt-6` appearing on the page would never have been reported.
+    # What is actually being excluded is a bare family prefix - `gpt`, `o1`,
+    # `claude` - which is a word in a sentence rather than a model id.
     unknown = sorted(
         name for name in on_page
         if name not in BY_MODEL
         and name not in replacements
-        and len(name) > 12
         and not name.endswith("-")
+        and any(char.isdigit() for char in name)
+        and name not in FAMILY_WORDS
     )
     return Comparison(provider, url, True, tuple(missing), tuple(unknown))
 
