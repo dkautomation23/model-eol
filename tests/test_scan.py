@@ -1,0 +1,124 @@
+# -*- coding: utf-8 -*-
+"""Tests for the matcher, which is where this tool earns or loses trust.
+
+The false positive is the failure mode that matters: a retired id is a prefix of
+several live ones, and a report that flags `gpt-4o` as dead is a report nobody
+reads twice.
+"""
+
+import unittest
+from datetime import date
+
+from model_eol.cli import main
+from model_eol.scan import find_in_text, group_by_date
+from model_eol.table import BY_MODEL, LIVE_LOOKALIKES, RETIREMENTS
+
+
+class TestMatching(unittest.TestCase):
+    def test_finds_a_retired_id(self):
+        hits = find_in_text('model = "gpt-4-0613"')
+        self.assertEqual([h.model for h in hits], ["gpt-4-0613"])
+
+    def test_does_not_match_inside_a_live_lookalike(self):
+        for live in LIVE_LOOKALIKES:
+            with self.subTest(live=live):
+                hits = find_in_text(f'model = "{live}"')
+                self.assertEqual(hits, [], f"{live} is live and must not be reported")
+
+    def test_longest_identifier_wins(self):
+        hits = find_in_text('model = "gpt-4-turbo-2024-04-09"')
+        self.assertEqual([h.model for h in hits], ["gpt-4-turbo-2024-04-09"])
+
+    def test_suffixed_variant_is_its_own_entry(self):
+        hits = find_in_text('"gpt-4-0613-completions"')
+        self.assertEqual([h.model for h in hits], ["gpt-4-0613-completions"])
+
+    def test_bare_o1_matches_but_o1_mini_does_not(self):
+        self.assertEqual([h.model for h in find_in_text('"o1"')], ["o1"])
+        self.assertEqual(find_in_text('"o1-mini"'), [])
+
+    def test_word_in_prose_is_not_a_match(self):
+        # A retired id inside a longer word must not fire.
+        self.assertEqual(find_in_text("myo1thing and gpt-4x"), [])
+
+    def test_line_numbers_are_reported(self):
+        hits = find_in_text('one\ntwo "gpt-4-turbo"\nthree')
+        self.assertEqual(hits[0].line, 2)
+
+    def test_several_ids_on_one_line(self):
+        hits = find_in_text('fallback = ["gpt-4-turbo", "gpt-3.5-turbo-1106"]')
+        self.assertEqual(sorted(h.model for h in hits),
+                         ["gpt-3.5-turbo-1106", "gpt-4-turbo"])
+
+
+class TestTable(unittest.TestCase):
+    def test_every_entry_has_a_replacement(self):
+        for r in RETIREMENTS:
+            self.assertTrue(r.replacement, f"{r.model} has no replacement")
+
+    def test_no_duplicate_identifiers(self):
+        models = [r.model for r in RETIREMENTS]
+        self.assertEqual(len(models), len(set(models)))
+
+    def test_no_replacement_is_itself_retired(self):
+        """A table that sends you to another dead model is worse than silence."""
+        for r in RETIREMENTS:
+            self.assertNotIn(r.replacement, BY_MODEL,
+                             f"{r.model} points at {r.replacement}, which is also retired")
+
+    def test_lookalikes_are_not_in_the_table(self):
+        for live in LIVE_LOOKALIKES:
+            self.assertNotIn(live, BY_MODEL)
+
+
+class TestGrouping(unittest.TestCase):
+    def test_groups_are_sorted_by_date(self):
+        hits = find_in_text('"o3-2025-04-16" "gpt-3.5-turbo-instruct"')
+        dates = list(group_by_date(hits))
+        self.assertEqual(dates, sorted(dates))
+        self.assertEqual(dates[0], date(2026, 9, 28))
+
+
+class TestExitCodes(unittest.TestCase):
+    def setUp(self):
+        import tempfile, pathlib
+        self.dir = pathlib.Path(tempfile.mkdtemp())
+
+    def write(self, name, text):
+        p = self.dir / name
+        p.write_text(text, encoding="utf-8")
+        return p
+
+    def test_clean_repository_exits_zero(self):
+        self.write("a.py", 'model = "gpt-5.6-sol"')
+        self.assertEqual(main([str(self.dir), "--today", "2026-09-21"]), 0)
+
+    def test_imminent_retirement_exits_one(self):
+        self.write("a.py", 'model = "gpt-3.5-turbo-instruct"')
+        self.assertEqual(main([str(self.dir), "--today", "2026-09-21", "--within", "30"]), 1)
+
+    def test_outside_the_window_exits_zero(self):
+        self.write("a.py", 'model = "o3-2025-04-16"')   # 11 December
+        self.assertEqual(main([str(self.dir), "--today", "2026-09-21", "--within", "30"]), 0)
+
+    def test_exclude_skips_documentation_that_only_lists_ids(self):
+        """A repository documenting model names matches itself without this."""
+        self.write("call.py", 'model = "gpt-3.5-turbo-instruct"')
+        (self.dir / "docs").mkdir(exist_ok=True)
+        (self.dir / "docs" / "table.md").write_text(
+            "retired: gpt-3.5-turbo-instruct", encoding="utf-8")
+        with_docs = main([str(self.dir), "--today", "2026-09-21", "--within", "30"])
+        self.assertEqual(with_docs, 1)
+        only_docs = main([str(self.dir), "--today", "2026-09-21", "--within", "30",
+                          "--exclude", "call.py"])
+        self.assertEqual(only_docs, 1, "the doc still matches, which is why the flag exists")
+        nothing = main([str(self.dir), "--today", "2026-09-21", "--within", "30",
+                        "--exclude", "call.py", "--exclude", "docs/*"])
+        self.assertEqual(nothing, 0)
+
+    def test_missing_path_exits_two(self):
+        self.assertEqual(main([str(self.dir / "nope"), "--today", "2026-09-21"]), 2)
+
+
+if __name__ == "__main__":
+    unittest.main()
