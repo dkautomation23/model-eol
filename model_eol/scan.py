@@ -98,7 +98,7 @@ def candidate_files(root: Path, exclude: tuple[str, ...] = ()) -> list[Path]:
         if exclude:
             rel = path.relative_to(root).as_posix()
             # fnmatch, not PurePath.match: the latter does not expand ** and
-            # full_match only exists from 3.13, while CI runs 3.10 too.
+            # full_match only exists from 3.13, while CI runs 3.11 too.
             if any(fnmatch(rel, pattern) for pattern in exclude):
                 continue
         if path.suffix.lower() not in TEXT_SUFFIX:
