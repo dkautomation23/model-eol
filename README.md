@@ -1,5 +1,9 @@
 # model-eol
 
+[![CI](https://github.com/dkautomation23/model-eol/actions/workflows/ci.yml/badge.svg)](https://github.com/dkautomation23/model-eol/actions/workflows/ci.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/dkautomation23/model-eol/badge)](https://scorecard.dev/viewer/?uri=github.com/dkautomation23/model-eol)
+[![CodeQL](https://github.com/dkautomation23/model-eol/actions/workflows/codeql.yml/badge.svg)](https://github.com/dkautomation23/model-eol/actions/workflows/codeql.yml)
+
 What in this repository stops working, when, and what replaces it.
 
 ```bash
