@@ -97,8 +97,14 @@ def _check_source() -> int:
             if len(result.unknown) > 12:
                 print(f"      ... and {len(result.unknown) - 12} more")
         if result.missing:
+            # This counts too. An earlier version printed this block and still
+            # returned 0 with "the table still matches", which is a check
+            # contradicting itself in one screen of output - and a row the page
+            # has dropped is exactly the case where the table may now be wrong.
+            questions += len(result.missing)
             print(f"  {len(result.missing)} identifier(s) in the table the page no longer "
-                  f"shows - usually a row dropped after the model was switched off:")
+                  f"shows - usually a row dropped after the model was switched off, "
+                  f"sometimes an entry that should not be here:")
             for name in result.missing[:6]:
                 print(f"      {name}")
             if len(result.missing) > 6:

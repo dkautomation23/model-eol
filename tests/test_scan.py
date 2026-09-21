@@ -137,6 +137,35 @@ class TestExitCodes(unittest.TestCase):
                         "--exclude", "call.py", "--exclude", "docs/*"])
         self.assertEqual(nothing, 0)
 
+    def test_check_source_does_not_pass_while_printing_a_problem(self):
+        """It used to. A page that had dropped a row we hold printed the warning
+        and then returned 0 with "the table still matches all three pages" -
+        a check contradicting itself in one screen. Codex found it."""
+        from model_eol import cli as cli_module
+        from model_eol.source import Comparison
+
+        real = cli_module.check_all
+        cli_module.check_all = lambda: [
+            Comparison("OpenAI", "http://x.example", True, missing=("gpt-4-0613",), unknown=()),
+        ]
+        try:
+            self.assertEqual(cli_module.main(["--check-source"]), 1)
+        finally:
+            cli_module.check_all = real
+
+    def test_check_source_passes_only_when_nothing_was_reported(self):
+        from model_eol import cli as cli_module
+        from model_eol.source import Comparison
+
+        real = cli_module.check_all
+        cli_module.check_all = lambda: [
+            Comparison("OpenAI", "http://x.example", True, missing=(), unknown=()),
+        ]
+        try:
+            self.assertEqual(cli_module.main(["--check-source"]), 0)
+        finally:
+            cli_module.check_all = real
+
     def test_missing_path_exits_two(self):
         self.assertEqual(main([str(self.dir / "nope"), "--today", "2026-09-21"]), 2)
 
