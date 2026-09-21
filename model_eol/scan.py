@@ -58,6 +58,21 @@ class Hit:
     def replacement(self) -> str:
         return BY_MODEL[self.model].replacement
 
+    @property
+    def provider(self) -> str:
+        return BY_MODEL[self.model].provider
+
+    @property
+    def replacement_dies(self) -> date | None:
+        """The day the recommended replacement itself retires, when it does.
+
+        Eight of Google's rows point at a model that is also on the list - the
+        page tells you to move to something that has its own shutdown date.
+        Migrating twice is a decision; not being told is not.
+        """
+        entry = BY_MODEL.get(self.replacement)
+        return entry.shutdown if entry else None
+
 
 def find_in_text(text: str, path: str = "<text>") -> list[Hit]:
     hits: list[Hit] = []

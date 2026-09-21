@@ -19,11 +19,13 @@ from datetime import date
 from pathlib import Path
 
 from .scan import group_by_date, scan
-from .table import RETIREMENTS, SNAPSHOT, SOURCE
+from .table import RETIREMENTS, SNAPSHOT, SOURCES
 
 
 def _print_report(hits, today: date, within: int) -> int:
-    print(f"model-eol - table copied {SNAPSHOT.isoformat()} from {SOURCE}")
+    print(f"model-eol - tables copied {SNAPSHOT.isoformat()}")
+    for provider, url in SOURCES.items():
+        print(f"  {provider:<10} {url}")
     age = (today - SNAPSHOT).days
     if age > 60:
         print(f"  WARNING: that table is {age} days old. Re-check the source before trusting it.")
@@ -46,7 +48,9 @@ def _print_report(hits, today: date, within: int) -> int:
             models.setdefault(hit.model, []).append(hit)
         for model, occurrences in sorted(models.items()):
             first = occurrences[0]
-            print(f"    {model}  ->  {first.replacement}"
+            chained = (f"  (which itself retires {first.replacement_dies.isoformat()})"
+                       if first.replacement_dies else "")
+            print(f"    [{first.provider}] {model}  ->  {first.replacement}{chained}"
                   f"   {len(occurrences)} occurrence(s)")
             for hit in occurrences[:3]:
                 print(f"        {hit.path}:{hit.line}  {hit.text}")
@@ -84,10 +88,14 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.list:
-        print(f"{len(RETIREMENTS)} identifiers, copied {SNAPSHOT.isoformat()} from {SOURCE}")
-        for r in sorted(RETIREMENTS, key=lambda r: (r.shutdown, r.model)):
-            tail = f"  [{r.note}]" if r.note else ""
-            print(f"  {r.shutdown.isoformat()}  {r.model:<30} -> {r.replacement}{tail}")
+        print(f"{len(RETIREMENTS)} identifiers from {len(SOURCES)} providers, "
+              f"copied {SNAPSHOT.isoformat()}")
+        for provider, url in SOURCES.items():
+            entries = [r for r in RETIREMENTS if r.provider == provider]
+            print(f"\n{provider}  ({len(entries)} identifiers)  {url}")
+            for r in sorted(entries, key=lambda r: (r.shutdown, r.model)):
+                tail = f"  [{r.note}]" if r.note else ""
+                print(f"  {r.shutdown.isoformat()}  {r.model:<40} -> {r.replacement}{tail}")
         return 0
 
     today = date.fromisoformat(args.today) if args.today else date.today()
@@ -102,14 +110,17 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         args.json.parent.mkdir(parents=True, exist_ok=True)
         args.json.write_text(json.dumps({
-            "source": SOURCE,
+            "sources": SOURCES,
             "table_snapshot": SNAPSHOT.isoformat(),
             "scanned": str(root),
             "today": today.isoformat(),
             "within_days": args.within,
             "findings": [{
                 "path": h.path, "line": h.line, "model": h.model,
+                "provider": h.provider,
                 "shutdown": h.shutdown.isoformat(), "replacement": h.replacement,
+                "replacement_dies": (h.replacement_dies.isoformat()
+                                     if h.replacement_dies else None),
                 "days_left": (h.shutdown - today).days, "text": h.text,
             } for h in hits],
         }, indent=2), encoding="utf-8")

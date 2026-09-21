@@ -11,7 +11,7 @@ from datetime import date
 
 from model_eol.cli import main
 from model_eol.scan import find_in_text, group_by_date
-from model_eol.table import BY_MODEL, LIVE_LOOKALIKES, RETIREMENTS
+from model_eol.table import BY_MODEL, LIVE_LOOKALIKES, RETIREMENTS, SOURCES
 
 
 class TestMatching(unittest.TestCase):
@@ -60,11 +60,25 @@ class TestTable(unittest.TestCase):
         models = [r.model for r in RETIREMENTS]
         self.assertEqual(len(models), len(set(models)))
 
-    def test_no_replacement_is_itself_retired(self):
-        """A table that sends you to another dead model is worse than silence."""
-        for r in RETIREMENTS:
-            self.assertNotIn(r.replacement, BY_MODEL,
-                             f"{r.model} points at {r.replacement}, which is also retired")
+    def test_a_replacement_that_is_itself_retired_is_reported_as_such(self):
+        """Google's own page does this: eight of its rows send you to a model
+        that also has a shutdown date. Silently repeating the advice would be
+        the failure; the tool has to say that the destination dies too."""
+        chained = [r for r in RETIREMENTS if r.replacement in BY_MODEL]
+        self.assertTrue(chained, "if the sources stop chaining, drop this test")
+        for r in chained:
+            hits = find_in_text(f'model = "{r.model}"')
+            self.assertEqual(hits[0].replacement_dies, BY_MODEL[r.replacement].shutdown,
+                             f"{r.model} -> {r.replacement} loses its second date")
+
+    def test_a_replacement_outside_the_table_has_no_second_date(self):
+        entry = next(r for r in RETIREMENTS if r.replacement not in BY_MODEL)
+        hits = find_in_text(f'model = "{entry.model}"')
+        self.assertIsNone(hits[0].replacement_dies)
+
+    def test_every_provider_is_represented(self):
+        providers = {r.provider for r in RETIREMENTS}
+        self.assertEqual(providers, set(SOURCES))
 
     def test_lookalikes_are_not_in_the_table(self):
         for live in LIVE_LOOKALIKES:

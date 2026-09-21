@@ -4,7 +4,8 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/dkautomation23/model-eol/badge)](https://scorecard.dev/viewer/?uri=github.com/dkautomation23/model-eol)
 [![CodeQL](https://github.com/dkautomation23/model-eol/actions/workflows/codeql.yml/badge.svg)](https://github.com/dkautomation23/model-eol/actions/workflows/codeql.yml)
 
-What in this repository stops working, when, and what replaces it.
+What in this repository stops working, when, and what replaces it — across
+OpenAI, Anthropic and Google.
 
 ```bash
 py -m model_eol.cli .
@@ -78,6 +79,42 @@ model-eol - table copied 2026-09-21 from https://developers.openai.com/api/docs/
 Exit code 1. In CI that fails the build while there is still time to fix it,
 which is the only moment the information is worth anything.
 
+## Your replacement can be dead too
+
+Google's own deprecation page sends `gemini-2.5-flash-image`, which retires on
+**2 October 2026**, to `gemini-3.1-flash-image-preview` — which retired on
+**25 June 2026**. Eight of its rows chain like this. Following the advice on the
+page moves you from one shutdown date to an earlier one.
+
+So when a recommended replacement is itself in the table, the report says so:
+
+```console
+2026-10-02  in 11 days
+    [Google] gemini-2.5-flash-image  ->  gemini-3.1-flash-image-preview  (which itself retires 2026-06-25)
+```
+
+## Three providers, one report
+
+```console
+$ py -m model_eol.cli ../some-agent --within 60
+model-eol - tables copied 2026-09-21
+  OpenAI     https://developers.openai.com/api/docs/deprecations
+  Anthropic  https://docs.anthropic.com/en/docs/about-claude/model-deprecations
+  Google     https://ai.google.dev/gemini-api/docs/deprecations
+
+2025-10-28  328 days ago - already gone
+    [Anthropic] claude-3-5-sonnet-20241022  ->  claude-sonnet-4-6   1 occurrence(s)
+
+2026-06-01  112 days ago - already gone
+    [Google] gemini-2.0-flash  ->  gemini-3.6-flash   1 occurrence(s)
+
+2026-10-23  in 32 days
+    [OpenAI] gpt-4-turbo  ->  gpt-5.6-sol   1 occurrence(s)
+```
+
+87 identifiers in all: 40 from OpenAI, 28 from Google, 19 from Anthropic, each
+carrying the provider that published it and the date that provider gave.
+
 ## Usage
 
 ```bash
@@ -104,9 +141,11 @@ it.
   `f"gpt-{version}"`, a value from an environment variable, a row in a
   database — is invisible here and always will be. "No findings" means no
   literals, not no exposure.
-- **OpenAI only.** Anthropic and Google publish their own retirement schedules
-  and neither is in this table yet. The table is one file; adding a provider is
-  adding entries, not rewriting the matcher.
+- **Three providers, and only what they published.** Anthropic lists one model
+  as deprecated with a retirement date "to be announced", and Google lists
+  dozens with "No shutdown date announced". Those rows are left out rather than
+  given a date this tool invented. A model missing here is not a model that is
+  safe.
 - **Replacement suggestions are OpenAI's, not mine.** The tool repeats what the
   deprecation page says replaces each model. Whether that replacement suits your
   prompts, your latency budget or your costs is a question this cannot answer.
