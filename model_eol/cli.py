@@ -19,6 +19,7 @@ from datetime import date
 from pathlib import Path
 
 from .scan import group_by_date, scan
+from .source import check_all
 from .table import RETIREMENTS, SNAPSHOT, SOURCES
 
 
@@ -68,6 +69,53 @@ def _print_report(hits, today: date, within: int) -> int:
     return 0
 
 
+def _check_source() -> int:
+    """Exit 0 when every page still matches, 1 when something needs a person,
+    2 when a page could not be reached - a check that could not run must not
+    read as a pass."""
+    print(f"model-eol - comparing the table copied {SNAPSHOT.isoformat()} against the live pages")
+    print()
+    unreachable = questions = 0
+    for result in check_all():
+        print(f"{result.provider}  {result.url}")
+        if not result.ok:
+            print(f"  could not reach it: {result.error}")
+            unreachable += 1
+            print()
+            continue
+        if not result.missing and not result.unknown:
+            print("  matches: every identifier in the table is still on the page, and the "
+                  "page names none we do not have")
+            print()
+            continue
+        if result.unknown:
+            questions += len(result.unknown)
+            print(f"  {len(result.unknown)} identifier(s) on the page that this table does "
+                  f"not have - these are the ones that matter:")
+            for name in result.unknown[:12]:
+                print(f"      {name}")
+            if len(result.unknown) > 12:
+                print(f"      ... and {len(result.unknown) - 12} more")
+        if result.missing:
+            print(f"  {len(result.missing)} identifier(s) in the table the page no longer "
+                  f"shows - usually a row dropped after the model was switched off:")
+            for name in result.missing[:6]:
+                print(f"      {name}")
+            if len(result.missing) > 6:
+                print(f"      ... and {len(result.missing) - 6} more")
+        print()
+
+    if unreachable:
+        print(f"{unreachable} page(s) could not be read, so this says nothing about them.")
+        return 2
+    if questions:
+        print(f"{questions} identifier(s) need a person to look. This cannot tell a new "
+              f"retirement from a model merely mentioned in a sentence.")
+        return 1
+    print("The table still matches all three pages.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     for stream in (sys.stdout, sys.stderr):
         try:
@@ -81,6 +129,9 @@ def main(argv: list[str] | None = None) -> int:
                         help="exit 1 if something retires within this many days (default 90)")
     parser.add_argument("--json", type=Path, help="write the findings here")
     parser.add_argument("--list", action="store_true", help="print the table and exit")
+    parser.add_argument("--check-source", action="store_true",
+                        help="ask each provider's page whether this table is still what it "
+                             "publishes. The only command here that uses the network")
     parser.add_argument("--today", help="pretend today is this ISO date, for tests")
     parser.add_argument("--exclude", action="append", default=[], metavar="GLOB",
                         help="skip paths matching this glob; repeatable. Use it for "
@@ -97,6 +148,9 @@ def main(argv: list[str] | None = None) -> int:
                 tail = f"  [{r.note}]" if r.note else ""
                 print(f"  {r.shutdown.isoformat()}  {r.model:<40} -> {r.replacement}{tail}")
         return 0
+
+    if args.check_source:
+        return _check_source()
 
     today = date.fromisoformat(args.today) if args.today else date.today()
 

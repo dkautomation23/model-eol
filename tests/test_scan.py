@@ -33,9 +33,16 @@ class TestMatching(unittest.TestCase):
         hits = find_in_text('"gpt-4-0613-completions"')
         self.assertEqual([h.model for h in hits], ["gpt-4-0613-completions"])
 
-    def test_bare_o1_matches_but_o1_mini_does_not(self):
+    def test_o1_and_o1_mini_are_told_apart(self):
+        """Both are retired, on different dates, and the longer name must not be
+        reported as the shorter one. o1-mini was in this suite as a live
+        look-alike until --check-source read the page and found it had been
+        switched off on 27 October 2025 - the assumption was mine, and the
+        check is what caught it."""
         self.assertEqual([h.model for h in find_in_text('"o1"')], ["o1"])
-        self.assertEqual(find_in_text('"o1-mini"'), [])
+        hits = find_in_text('"o1-mini"')
+        self.assertEqual([h.model for h in hits], ["o1-mini"])
+        self.assertEqual(hits[0].shutdown, date(2025, 10, 27))
 
     def test_word_in_prose_is_not_a_match(self):
         # A retired id inside a longer word must not fire.

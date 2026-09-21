@@ -112,7 +112,7 @@ model-eol - tables copied 2026-09-21
     [OpenAI] gpt-4-turbo  ->  gpt-5.6-sol   1 occurrence(s)
 ```
 
-87 identifiers in all: 40 from OpenAI, 28 from Google, 19 from Anthropic, each
+169 identifiers in all: 122 from OpenAI, 28 from Google, 19 from Anthropic, each
 carrying the provider that published it and the date that provider gave.
 
 ## Usage
@@ -131,6 +131,41 @@ itself: a changelog, a compatibility table, or this tool's own table. Without
 the flag the report is mostly documentation and the real call site is buried in
 it.
 
+## The table can check itself against the page
+
+Every other command here works offline. This one is the exception and is opt-in
+for that reason, because "is this table still what the provider publishes" is a
+question that cannot be answered without asking the provider.
+
+```console
+$ py -m model_eol.cli --check-source
+model-eol - comparing the table copied 2026-09-21 against the live pages
+
+OpenAI  https://developers.openai.com/api/docs/deprecations
+  24 identifier(s) on the page that this table does not have - these are the ones that matter
+...
+50 identifier(s) need a person to look. This cannot tell a new retirement from a
+model merely mentioned in a sentence.
+```
+
+Exit 0 when the pages match, 1 when something needs a person, 2 when a page
+could not be read — a check that could not run must not read as a pass.
+
+**It earned its place the first time it ran.** The table had been copied by hand
+and covered 40 OpenAI identifiers. The check found 82 more the page dates,
+including whole families the hand-copy had missed — audio, realtime, transcribe
+— and every model already switched off, which is the most useful thing this can
+report: `gpt-3.5-turbo-0301`, `o1-preview` and `gpt-4-0314` are dead now, and a
+codebase naming one is failing today rather than in October.
+
+It also found an error in this repository's own test suite. `o1-mini` was listed
+as a live look-alike, with a test asserting it must never be reported. The page
+says it was switched off on **27 October 2025**. The assumption was mine; the
+check is what caught it, and the test now asserts the date instead.
+
+Every date the hand-copied table already had matched the page exactly, which is
+the other half of what this command is for.
+
 ## Honest limits
 
 - **The table is a dated snapshot, not a feed.** It was copied by hand on
@@ -141,6 +176,10 @@ it.
   `f"gpt-{version}"`, a value from an environment variable, a row in a
   database — is invisible here and always will be. "No findings" means no
   literals, not no exposure.
+- **`--check-source` needs a person.** It says which identifiers the page names
+  that the table does not have. It cannot tell a newly dated retirement from a
+  model mentioned in a sentence, and it says so in its own output rather than
+  pretending to a verdict.
 - **Three providers, and only what they published.** Anthropic lists one model
   as deprecated with a retirement date "to be announced", and Google lists
   dozens with "No shutdown date announced". Those rows are left out rather than
